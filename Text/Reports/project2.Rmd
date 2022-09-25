@@ -1,0 +1,352 @@
+---
+title: "report2_SAR_2022"
+author: "Wenhao Hong,Renjun Luo,Feixiang Liu,Feng Wang"
+date: "2022/9/25"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+First of all, we load the file imagemetrix.R which contains the functions we need. Then we install and import necessary packages including ggplot2 and reshape2, etc. 
+
+
+
+
+
+```{r setup,include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(reshape2)
+require(ggplot2)
+require(ggthemes)
+theme_set(theme_minimal())
+require(GGally)
+require(ggExtra)
+source("./Code/R/imagematrix.R")
+```
+#We define a function of K-distribution as dKI, and we define an extra function rKI to implement the K-distribution with variants in random range.
+
+```{r the define of K distribution function}
+dKI <- function(z, p_alpha, p_lambda, p_Looks, log=FALSE) {
+  
+  if(log==FALSE) {
+    
+    lLz <- p_lambda * p_Looks* z
+    
+    return((2*p_lambda*p_Looks/(gamma(p_alpha)*gamma(p_Looks))) *
+             (lLz)^((p_alpha+p_Looks)/2-1) *
+             besselK(x = 2*sqrt(lLz), nu = p_alpha-p_Looks)
+    )
+  }
+  
+}
+
+
+rKI <- function(n, p_alpha,p_lambda, p_Looks) {
+  
+  return(
+    rgamma(n, 1, p_Looks)*rgamma(n, p_alpha/p_lambda, p_alpha)
+  )
+  
+}
+```
+
+#We define a function of G0-distribution as dGI0, and we define an extra function rGI0 to implement the G0-distribution with variants in random range.
+
+```{r the define of G0 distribution function}
+dGI0 <- function(z, p_alpha, p_gamma, p_Looks, log=FALSE) {
+  
+  if(log==TRUE) {
+    return(
+      (p_Looks*log(p_Looks) + lgamma(p_Looks-p_alpha) + (p_Looks-1)*log(z) ) - 
+        (p_alpha*log(p_gamma) + lgamma(-p_alpha) + lgamma(p_Looks) + 
+        (p_Looks-p_alpha)*log(p_gamma + z*p_Looks) ) 
+      )   
+    }
+  else { return( 
+    ( p_Looks^p_Looks * gamma(p_Looks-p_alpha) * z^(p_Looks-1) ) / 
+    (p_gamma^p_alpha * gamma(-p_alpha) * gamma(p_Looks) * (p_gamma + z*p_Looks)^(p_Looks-p_alpha)) 
+  )
+  }
+}
+
+
+rGI0 <- function(n, p_alpha, p_gamma, p_Looks) {
+  
+  return(
+    rgamma(n, 1, p_Looks) / rgamma(n, -p_alpha, p_gamma)
+  )
+  
+}
+```
+
+
+
+To implement the density of K-distribution, we create the data s ranging from 0.001 to 10. Then according to the K-distribution function we defined before, we give the parameters of the function with (p_alpha, p_lambda, p_looks) of (2, 1, 1) in purple, (4, 5, 2) in green, (6, 9, 3) in red.
+```{r K distribution for intensity data,fig.align = "center",fig.cap="K distribution"}
+s <- seq(0.001, 10, length.out = 500)
+s <- data.frame(s)
+ggplot(data=s, aes(x=s),
+       y=Transformations, 
+       color=Transformation) +
+  stat_function(fun=dKI, geom = "line", size=2, col="purple", args = list(p_alpha=2, p_lambda=1, p_Looks=1)) +
+  stat_function(fun=dKI, geom = "line", size=2, col="green", args = list(p_alpha=4, p_lambda=5, p_Looks=2)) +
+  stat_function(fun=dKI, geom = "line", size=2, col="red", args = list(p_alpha=6, p_lambda=9, p_Looks=3)) +
+  xlab("x") + 
+  ylab("y") +
+  labs(title = "K Distribution") +
+  scale_x_log10()
+```
+
+Then we implement the densities of G0-distribution with the function dGI0 and the same data we got in the previous section. Here we give the parameters of the function with (alpha, lambda, looks) of (2, 1, 1) in  purple, (4, 5, 2) in green, (6, 9, 3) in red respectively.
+```{r G0 distribution for intensity data,fig.align = "center",fig.cap='G0 distribution'}
+s <- seq(0.001, 10, length.out = 500)
+s <- data.frame(s)
+ggplot(data=s, aes(x=s)) +
+  stat_function(fun=dGI0, geom = "line", size=2, col="purple", args = list(p_alpha=-2, p_gamma=1, p_Looks=1)) +
+  stat_function(fun=dGI0, geom = "line", size=2, col="green", args = list(p_alpha=-4, p_gamma=5, p_Looks=2)) +
+  stat_function(fun=dGI0, geom = "line", size=2, col="red", args = list(p_alpha=-6, p_gamma=9, p_Looks=3)) +
+  xlab("x") + 
+  ylab("y") +
+  labs(title = "G0 Distribution") +
+  scale_x_log10()
+```
+
+
+Then, in order to implement the random number generators for K-Distribution, the defined function rKI is used to generate random numbers with alpha=4, lambda=5 and Looks=2, then we set num=100000 to illustrate the data we create in histogram and Histogram & smoothed histogram.
+```{r K distribution random generator,fig.align='center',fig.cap='random number generators for K distribution'}
+p_alpha=4
+p_lambda=5
+p_Looks=2
+pk_num=100000
+
+#Histogram & smoothed histogram
+s <- rKI(pk_num, p_alpha, p_lambda, p_Looks) 
+s <- data.frame(s) # x~K(p_alpha, p_lambda, p_Looks)
+
+ggplot(data=s, aes(x=s)) +
+  geom_histogram(aes(y=..density..),alpha=0.5, fill="#6495ED",color="black",bins=nclass.FD(unlist(s))/10) +
+  geom_density(col="red", size=1) +
+  geom_boxplot(aes(y=1), width=.1)+
+  stat_ecdf(col="purple") +
+  xlab("x") +
+  ylab("y") +
+  labs(title="Histogram & smoothed histogram") +
+  scale_x_log10()
+
+```
+
+
+Subsequently, we compare the K-distribution with gamma distributions in two different parameters, in which the purple line shows the distribution of dgamma fuction with shape=1, scale=p_Looks, and the green one indicates the dgamma fuction with shape=p_alpha/p_lambda, scale=p_alpha).
+```{r Composition of K distribution,fig.align='center',fig.cap='Composition of K distribution'}
+s <- seq(0.001, 10, length.out = 500) 
+s <- data.frame(s)
+ggplot(data=s, aes(x=s)) +
+  stat_function(fun=dgamma, geom = "line", size=2, col="purple", args = list(shape=1, scale=p_Looks)) +
+  stat_function(fun=dgamma, geom = "line", size=2, col="green", args = list(shape=p_alpha/p_lambda, scale=p_alpha)) +
+  stat_function(fun=dKI, geom = "line", size=2, col="red", args = list(p_alpha=p_alpha, p_lambda=p_lambda, p_Looks=p_Looks)) +
+  xlab("x") +
+  ylab("y") +
+  labs(title = "R-gamma(1,L), B-gamma(a/l,a), G-K(a,l,L)") +
+  scale_x_log10()
+```
+In the first picture, Histograms/smoothed histogram are generated using the random number generator of K-distribution.
+
+In the second picture, the red line represents the K distribution curve, and the green line and the purple line respectively represent two Gamma distributions that generate the K-distribution. 
+
+Then we use rGI0 to generate random numbers obeying parameters which alpha=-4 ,lambda=5 and Looks=2. And we set num=100000 to illustrate the data we create in histogram and Histogram & smoothed histogram. 
+```{r G0 distribution random generator,fig.align='center',fig.cap='random number generators for G0 distribution'}
+p_alpha=-4
+p_gamma=5 
+p_Looks=2
+pG0_num=100000
+
+# Histogram & smoothed histogram
+s <- rGI0(pG0_num,p_alpha, p_gamma, p_Looks)
+s <- data.frame(s) # x~G0(p_alpha, p_gamma, p_Looks)
+
+ggplot(data = s, aes(x=s)) +
+  geom_histogram(aes(y=..density..),alpha=0.5, fill="#6495ED",color="black",bins=nclass.FD(unlist(s))/10) +
+  geom_density(col="red", size=1) +
+  geom_boxplot(aes(y=1), width=.1)+
+  stat_ecdf(col="purple") +
+  xlab("x") +
+  ylab("y") +
+  labs(title = "Histogram & smoothed histogram") +
+  scale_x_log10()
+```
+In the first picture, we use G0 distribution random number generator to generate histogram/smooth histogram
+
+In the second picture, the red line represents the G0 distribution curve, and the green line and purple line represent the two gamma distributions generating G0 distribution respectively
+
+We compare the G0 distribution with two different gamma distributions. The purple line represents the distribution of dgamma function, shape=1, scale=p_ Look, while the green line is a dgammas function, shape=p_ alpha/p_ Lambda，scale=p_ alpha)
+```{r Composition of G0 distribution,fig.align='center',fig.cap='Composition of G0 distribution'}
+s <- seq(0.001, 10, length.out = 500) 
+s <- data.frame(s)
+ggplot(data=s, aes(x=s)) +
+  stat_function(fun=dgamma, geom = "line", size=2, col="purple", args = list(shape=1, scale=p_Looks)) +
+  stat_function(fun=dgamma, geom = "line", size=2, col="green", args = list(shape=-p_alpha, scale=p_gamma)) +
+  stat_function(fun=dGI0, geom = "line", size=2, col="red", args = list(p_alpha=p_alpha, p_gamma=p_gamma, p_Looks=p_Looks)) +
+  xlab("x") + 
+  ylab("y") +
+  labs(tittle = "R-gamma(1,L), B-gamma(-a,g), G-G0(a,g,L)") +
+  scale_x_log10()
+```
+
+The first figure below shows the image of dgamma and pgamma functions with shapes 1, 4, and 9. At the same time, we also give their histograms, that is, the second graph.
+```{r dgamma Distributions use our choice,fig.align = "center",fig.cap='dgamma distribution'}
+s <- seq(0.001, 10, length.out = 500)
+s <- data.frame(s)
+ggplot(data=s, aes(x=s)) +
+  stat_function(fun=dgamma, geom = "line", size=2, col="purple", args = list(shape=1, scale=1)) +
+  stat_function(fun=dgamma, geom = "line", size=2, col="green", args = list(shape=4, scale=1/4)) +
+  stat_function(fun=dgamma, geom = "line", size=2, col="red", args = list(shape=9, scale=1/9)) +
+  xlab("x") + 
+  ylab("y") +
+  labs(title = "dgamma Distribution") +
+  scale_x_log10()
+```
+
+
+```{r dgamma Distributions histogram,fig.align='center',fig.cap='dgamma distribution'}
+s <- seq(0.001, 10, length.out = 500)
+a_1 <- dgamma(s,1,1)
+a_1 <- data.frame(a_1)
+ggplot(data=a_1, aes(x=s)) +
+  geom_histogram(aes(y=..density..),
+                 bins=30,
+                 col="black", fill="white")+
+  xlab('x')+
+  ylab("density")+
+  labs(title = "dgamma Distribution")
+```
+
+
+```{r pgamma Distributions use our choice,fig.align = "center",fig.cap="pgamma distribution"}
+s <- seq(0.001, 10, length.out = 500)
+s <- data.frame(s)
+ggplot(data=s, aes(x=s)) +
+  stat_function(fun=pgamma, geom = "line", size=2, col="purple", args = list(shape=1, scale=1)) +
+  stat_function(fun=pgamma, geom = "line", size=2, col="green", args = list(shape=4, scale=1/4)) +
+  stat_function(fun=pgamma, geom = "line", size=2, col="red", args = list(shape=9, scale=1/9)) +
+  xlab("x") + 
+  ylab("y") +
+  labs(title = "pgamma Distribution")
+
+```
+
+
+```{r pgamma Distributions histogram,fig.align='center',fig.cap='pgamma distribution'}
+s <- seq(0.001, 10, length.out = 500)
+a_1 <- pgamma(s,1,1)
+a_1 <- data.frame(a_1)
+ggplot(data=a_1, aes(x=s)) +
+  geom_histogram(aes(y=..density..),
+                 bins=30,
+                 col="black", fill="white")+
+  xlab('x')+
+  ylab("density")+
+  labs(title = "pgamma Distribution")
+```
+
+#__Analyze the bright image data__
+```{r load brigrt.Rdata,include=FALSE}
+load("./Data/Binary/bright.Rdata")
+```
+
+Basic information of bright data is output here, including dimensions, data types and ranges.
+```{r analize the data,collapse=TRUE,prompt=TRUE,comment=''}
+dim(bright)
+typeof(bright)
+range(bright)
+```
+
+
+```{r change the type of data}
+bright_data <- data.frame(bright=as.vector(bright))
+summary(bright_data)
+```
+We use boxplot to analyze the inner information of the data, the outliers are shown in red.  
+In order to better analyze the data, we also apply a logarithmic transformation to the data.
+
+```{r Exploratory Data Analysis_Boxplot, fig.cap='Boxplots with notches', fig.subcap=c('Linear scale', 'Semilogarithmic scale'),fig.align = "center"}
+ggplot(bright_data, aes(x=bright)) +
+  geom_boxplot(notch = TRUE)+
+  geom_boxplot(outlier.colour="red", outlier.shape=21,outlier.size=1)+
+  ggtitle("Boxplot of bright")+
+  ylab("Boxplot")
+
+ggplot(bright_data, aes(x=bright)) +
+  geom_boxplot(notch = TRUE) +
+  geom_boxplot(outlier.colour="red", outlier.shape=21,outlier.size=1)+
+  scale_x_log10()+
+  ylab("Boxplot") +
+  ggtitle("Boxplot of bright(semilog scale)")
+```
+
+As shown in the first image, we can see from the "bright" image that the box is so flat.
+After using the logarithmic transformation, the mean of the data is about 10^5, and the fluctuation is not large.
+
+
+We then use a histogram to show the structure of the data. By using different boxes, we get the first and second pictures.
+Here we also use a semilog scale, as shown in the third one.
+
+```{r Exploratory Data Analysis_Histogram, fig.cap='Histogtram', fig.subcap=c('Linear scale', 'Semilogarithmic scale'), fig.align='center'}
+hist(bright,freq = FALSE)
+lines(density.default(bright),col='blue')
+ggplot(bright_data, aes(x=bright)) +
+  geom_histogram(aes(y=..density..),
+                 bins=nclass.FD(unlist(bright_data)),
+                 col="black", fill="white")+
+  xlab("Intensity")+
+  ylab("Density") +
+  ggtitle("Histogram of bright")
+ggplot(bright_data, aes(x=bright)) +
+  geom_histogram(aes(y=..density..),
+                 bins=nclass.FD(unlist(bright_data)),
+                 col="black", fill="white") +
+  scale_x_log10()+
+  xlab("Intensity in semilogarithmic scale")+
+  ylab("Density") +
+  ggtitle("Histogram of bright(semilog scale)")
+```
+
+We can see that with the semilog scale, the data are more widely distributed, which means better analysis.
+
+After this part of the analysis, we put the boxplot and histogram together.
+We can obtain the following information:
+1. The data is positive.
+2. The dynamic range of the data is very large.
+3. The data are symmetrical in their means.
+
+```{r Exploratory Data Analysis_Histogram+Boxplot,fig.cap='Histogtram+Boxplot',fig.align='center'}
+ggplot(bright_data, aes(x=bright)) +
+  geom_histogram(aes(y=..density..),
+                 bins=nclass.FD(unlist(bright_data)),
+                 col="black", fill="white") +
+  geom_boxplot(aes(y=1.0), width=.1, notch=TRUE,outlier.colour="red", outlier.shape=21,outlier.size=1) +
+  #geom_boxplot(outlier.colour="red", outlier.shape=21,outlier.size=1)+
+  ylab("Density and Boxplot") +
+  xlab("Intensity in semilogarithmic scale") +
+  scale_x_log10()
+```
+In this section we can see the raw data and its empirical functions.
+
+```{r Empirical Function+Histogram,fig.align='center'}
+ggplot(bright_data, aes(x=bright)) +
+  geom_histogram(aes(y=..density..),
+                 bins=nclass.FD(unlist(bright_data)),
+                 col="black", fill="white") +
+  stat_ecdf(col="red") +
+  ylab("Density and Empirical function") +
+  xlab("Intensity in semilogarithmic scale") +
+  scale_x_log10()
+```
+
+Now that we've finished analyzing, let's use bright data to generate images, and the "imagematrix" library provides a function to help us.
+
+```{r Image,fig.align='center'}
+plot(imagematrix(normalize(bright)))
+```
+
+
