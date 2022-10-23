@@ -190,7 +190,29 @@ As is shown in the picture, we can see $\sigma^{2}$ improved by bootstrap have a
 Here we create our own new phantom:
 ```{r Load_Data_2}
 # Use your paths
+dgammaSAR <- function(x, Looks, mean) {
+  
+  dgamma(x, shape=Looks, rate=Looks/mean)
+  
+}
 
+
+# Version 1: from scratch
+dGI0 <- function(z, p_alpha, p_gamma, p_Looks, log=FALSE) {
+  
+  if(log==TRUE) {
+    return(
+      (p_Looks*log(p_Looks) + lgamma(p_Looks-p_alpha) + (p_Looks-1)*log(z) ) - 
+        (p_alpha*log(p_gamma) + lgamma(-p_alpha) + lgamma(p_Looks) + 
+        (p_Looks-p_alpha)*log(p_gamma + z*p_Looks) ) 
+      )   
+    }
+  else { return( 
+    ( p_Looks^p_Looks * gamma(p_Looks-p_alpha) * z^(p_Looks-1) ) / 
+    (p_gamma^p_alpha * gamma(-p_alpha) * gamma(p_Looks) * (p_gamma + z*p_Looks)^(p_Looks-p_alpha)) 
+  )
+  }
+}
 strips=matrix(1:256,nrow = 256,ncol = 256)
 for(i in 1:128)
 {

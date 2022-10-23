@@ -1,0 +1,14 @@
+Report 2:
+* I had to fix the paths to the data and to the imagematrix package, because yours were wrong.
+* Always try using notches=TRUE in the boxplots because they give an idea of the precision of the median
+* Always run grammarly on your reports to avoid common mistakes in the use of the English language
+Marks: 8
+
+Report 3:
+* It was supposed to be your report, not mine. I see text in Portuguese, which I believe is not yours.
+Marks: 6
+
+Report 4:
+* The report is not self-contained. I added the definitions of dGammaSAR and of dGI0
+Marks: 9
+

@@ -22,7 +22,7 @@ require(ggthemes)
 theme_set(theme_minimal())
 require(GGally)
 require(ggExtra)
-source("./Code/R/imagematrix.R")
+source("../../Code/R/imagematrix.R")
 ```
 #We define a function of K-distribution as dKI, and we define an extra function rKI to implement the K-distribution with variants in random range.
 
@@ -251,7 +251,7 @@ ggplot(data=a_1, aes(x=s)) +
 
 #__Analyze the bright image data__
 ```{r load brigrt.Rdata,include=FALSE}
-load("./Data/Binary/bright.Rdata")
+load("../../Data/Rdata/bright.Rdata")
 ```
 
 Basic information of bright data is output here, including dimensions, data types and ranges.
